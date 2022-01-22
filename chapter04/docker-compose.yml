@@ -1,0 +1,50 @@
+version: "3.9"
+services:
+  rails:
+    build: .
+    container_name: rails
+    command: ash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
+    volumes:
+      - .:/myapp
+      - /myapp/node_modules
+      - public-data:/myapp/public
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    environment:
+      WEBPACKER_DEV_SERVER_HOST: webpacker
+
+  webpacker:
+    build: .
+    container_name: webpacker
+    volumes:
+      - .:/myapp
+      - /myapp/node_modules
+      - public-data:/myapp/public
+    command: ./bin/webpack-dev-server
+    environment:
+      WEBPACKER_DEV_SERVER_HOST: 0.0.0.0
+    ports:
+      - "3035:3035"
+
+
+  db:
+    image: mysql:8.0.27
+    container_name: db
+    environment:
+      TZ: Asia/Tokyo
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db:/var/lib/mysql
+
+volumes:
+  db:
+    driver: local
+  bundle:
+    driver: local
+  public-data:

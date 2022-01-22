@@ -1,0 +1,20 @@
+Style/Documentation:
+  Enabled: false
+
+# 除外するファイル
+AllCops:
+  Exclude:
+    - db/schema.rb
+    - tmp/**/*
+    - vendor/bundle/**/*
+    - Rakefile
+    - config.ru
+    - lib/*
+    - bin/**/*
+    - db/**/*
+    - Gemfile
+    - test/**/*
+    - node_modules/**/*
+    - config/application.rb
+    - config/environments/*
+  NewCops: enable
