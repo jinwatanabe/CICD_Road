@@ -3,13 +3,13 @@ services:
   rails:
     build: .
     container_name: rails
-    # command: bundle exec puma -C config/puma.rb -e production
+    command: bundle exec puma -C config/puma.rb -e production
     volumes:
       - .:/myapp
       - public-data:/myapp/public
       - tmp-data:/myapp/tmp
-      # - log-data:/myapp/log
-      # - /myapp/node_modules
+      - log-data:/myapp/log
+      - /myapp/node_modules
     env_file:
       - .env
     depends_on:
