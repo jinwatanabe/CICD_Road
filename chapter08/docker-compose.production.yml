@@ -1,0 +1,46 @@
+version: "3.9"
+services:
+  rails:
+    build: .
+    container_name: rails
+    command: bundle exec puma -C config/puma.rb -e production
+    volumes:
+      - .:/myapp
+      - public-data:/myapp/public
+      - tmp-data:/myapp/tmp
+      - log-data:/myapp/log
+      - /myapp/node_modules
+    env_file:
+      - .env
+    depends_on:
+      - db
+    user: root
+
+  db:
+    image: mysql:8.0.27
+    container_name: db
+    environment:
+      TZ: Asia/Tokyo
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db:/var/lib/mysql
+  
+  web:
+    build:
+      context: containers/nginx
+    volumes:
+      - public-data:/myapp/public
+      - tmp-data:/myapp/tmp
+    ports:
+      - 80:80
+    depends_on:
+      - rails
+
+volumes:
+  db:
+    driver: local
+  public-data:
+  tmp-data:
+  log-data:
