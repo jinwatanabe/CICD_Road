@@ -1,0 +1,37 @@
+version: 0.2
+
+env:
+  variables:
+    DOCKER_BUILDKIT: "1"
+
+phases:
+  pre_build:
+    commands:
+      - echo Logiging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - docker pull $AWS_ECR_BUILD_REPOSITORY:latest
+      - docker tag $AWS_ECR_BUILD_REPOSITORY:latest build:latest
+
+      - IMAGE_TAG=$(echo ${CODEBUILD_RESOLVED_SOURCE_VERSION} | head -c 7)
+
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build --target production --cache-from build:latest --build-arg SECRET_KEY_BASE=$SECRET_KEY_BASE --build-arg BUILDKIT_INLINE_CACHE=1 -t $IMAGE_NAME:$IMAGE_TAG .
+      - docker build --target build --cache-from build:latest --build-arg SECRET_KEY_BASE=$SECRET_KEY_BASE --build-arg BUILDKIT_INLINE_CACHE=1 -t build:latest .
+      - docker tag $IMAGE_NAME:$IMAGE_TAG $AWS_ECR_BUILD_REPOSITORY:$IMAGE_TAG
+      - docker tag build:latest $AWS_ECR_BUILD_REPOSITORY:latest
+
+  post_build:
+    commands:
+      - echo Build completed on `data`
+      - echo Pushing the Docker image...
+      - docker images
+      - docker push $AWS_ECR_BUILD_REPOSITORY:latest
+      - docker push $AWS_ECR_BUILD_REPOSITORY:$IMAGE_TAG
+      - echo "[{\"name\":\"sample-rails\",\"imageUri\":\"${AWS_ECR_BUILD_REPOSITORY}:${IMAGE_TAG}\"}]" > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
