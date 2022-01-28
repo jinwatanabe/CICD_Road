@@ -1,9 +1,10 @@
-version: "3.9"
+version: "3.7"
 services:
   rails:
-    build: .
+    build:
+      context: .
+      target: production
     container_name: rails
-    command: bundle exec puma -C config/puma.rb -e production
     volumes:
       - .:/myapp
       - public-data:/myapp/public
@@ -14,7 +15,9 @@ services:
       - .env
     depends_on:
       - db
-    user: root
+    environment:
+      DB_HOST: db
+      DB_USERNAME: root
 
   db:
     image: mysql:8.0.27
