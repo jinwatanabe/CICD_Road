@@ -1,0 +1,15 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Test....
+      - chown -R 1000:1000 .
+      - docker-compose run --rm rails sleep 10
+      - docker-compose run --rm rails rails db:create RAILS_ENV=test
+      - docker-compose run --rm rails rails db:migrate RAILS_ENV=test
+  build:
+    commands:
+      - echo Build started on `data`
+      - echo Building the Rspec test...
+      - docker-compose run --rm rails rspec 
