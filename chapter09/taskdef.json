@@ -1,0 +1,63 @@
+{
+	"family": "sample-ecs",
+	"cpu": "256",
+	"memory": "512",
+	"networkMode": "awsvpc",
+	"requiresCompatibilities": ["FARGATE"],
+	"executionRoleArn": "arn:aws:iam::[ACCOUNT ID]:role/ecsTaskExecutionRole",
+	"taskRoleArn": "arn:aws:iam::[ACCOUNT ID]:role/ecsTaskExecutionRole",
+	"containerDefinitions": [
+		{
+			"name": "rails",
+			"image": "[ACCOUNT ID].dkr.ecr.ap-northeast-1.amazonaws.com/sample-rails:staging",
+			"portMappings": [
+				{
+					"hostPort": 3000,
+					"protocol": "tcp",
+					"containerPort": 3000
+				}
+			],
+			"environment": [
+				{
+					"name": "DB_USERNAME",
+					"value": "admin"
+				},
+				{
+					"name": "DB_PASSWORD",
+					"value": "password"
+				},
+				{
+					"name": "DB_DATABASE",
+					"value": "myapp"
+				},
+				{
+					"name": "DB_HOST",
+					"value": "[RDSエンドポイント]"
+				},
+				{
+					"name": "SECRET_KEY_BASE",
+					"value": "[master.keyの値]"
+				}
+			],
+			"essential": true
+		},
+		{
+			"name": "nginx",
+			"image": "[ACCOUNT ID].dkr.ecr.ap-northeast-1.amazonaws.com/sample-nginx",
+			"portMappings": [
+				{
+					"hostPort": 80,
+					"protocol": "tcp",
+					"containerPort": 80
+				}
+			],
+			"volumesFrom": [
+				{
+					"sourceContainer": "rails",
+					"readOnly": true
+				}
+			],
+			"essential": true
+		}
+	]
+}
