@@ -1,0 +1,331 @@
+Resources:
+
+ #=================================
+ # VPCの作成
+ #=================================
+  SampleVPC:
+    Type: "AWS::EC2::VPC"
+    Properties: 
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: 'false'
+      EnableDnsSupport: 'true'
+      Tags:
+      - Key: Name
+        Value: sample-vpc
+
+ #=================================
+ # サブネットの作成
+ #=================================
+  SamplePublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref SampleVPC
+      CidrBlock: 10.0.0.0/20
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: ap-northeast-1a
+      Tags:
+      - Key: Name
+        Value: sample-subnet-public01
+
+  SamplePublicSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref SampleVPC
+      CidrBlock: 10.0.16.0/20
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: ap-northeast-1c
+      Tags:
+      - Key: Name
+        Value: sample-subnet-public02
+
+  SamplePrivateSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref SampleVPC
+      CidrBlock: 10.0.64.0/20
+      AvailabilityZone: ap-northeast-1a
+      Tags:
+      - Key: Name
+        Value: sample-subnet-private01
+
+  SamplePrivateSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref SampleVPC
+      CidrBlock: 10.0.80.0/20
+      AvailabilityZone: ap-northeast-1c
+      Tags:
+      - Key: Name
+        Value: sample-subnet-private02
+
+ #=================================
+ # インターネットゲートウェイの作成
+ #=================================
+
+  SampleIgw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: sample-igw
+
+  # InternetGatewayとVPCの接続
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref SampleIgw
+      VpcId: !Ref SampleVPC
+
+ #=================================
+ # ルートテーブルの作成
+ #=================================
+
+  SampleRtPublic:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref SampleVPC
+      Tags:
+        - Key: Name
+          Value: sample-rt-public
+
+  # SubnetとRoutetableの関連付け
+  PublicRouteTableAssociation1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref SampleRtPublic
+      SubnetId: !Ref SamplePublicSubnet01
+  PublicRouteTableAssociation1c:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref SampleRtPublic
+      SubnetId: !Ref SamplePublicSubnet02
+
+  # Routeの指定
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref SampleRtPublic
+      GatewayId: !Ref SampleIgw
+
+ #=================================
+ # セキュリティグループの作成
+ #=================================
+
+  SampleSgElb:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: for load balancer
+      GroupName: sample-sg-elb
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: sample-sg-elb
+      VpcId: !Ref SampleVPC
+
+  SampleSgEcs:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: for ecs
+      GroupName: sample-sg-ecs
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: sample-sg-ecs
+      VpcId: !Ref SampleVPC
+
+  SampleSgDB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: for rds
+      GroupName: sample-sg-db
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: sample-sg-db
+      VpcId: !Ref SampleVPC
+
+ #=================================
+ # RDSの作成
+ #=================================
+
+  #  DBパラメーターグループ
+  SampleDBPg:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Family: mysql8.0
+      Description: sample parameter group
+      Tags:
+        - Key: Name
+          Value: sample-db-pg
+
+  #  DBオプショングループ
+  # SampleDBOg:
+  #   Type: AWS::RDS::OptionGroup
+  #   Properties:
+  #     OptionGroupDescription: sample option group
+  #     EngineName: mysql
+  #     MajorEngineVersion: 8.0
+  #     Tags:
+  #       - Key: Name
+  #         Value: sample-db-og
+
+  #  DBサブネットグループ
+  SampleDBSubnet: 
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupName: sample-db-subnet
+      DBSubnetGroupDescription: sample db subnet
+      SubnetIds: 
+        - !Ref SamplePrivateSubnet01
+        - !Ref SamplePrivateSubnet02
+
+  #  DB
+  SampleDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage : 20
+      DBInstanceClass: db.t2.micro
+      Port: 3306
+      StorageType: gp2
+      BackupRetentionPeriod: 7
+      MasterUsername: admin
+      MasterUserPassword: password
+      DBInstanceIdentifier: sample-db
+      Engine: mysql
+      EngineVersion: 8.0.23
+      DBSubnetGroupName: !Ref SampleDBSubnet
+      DBParameterGroupName: !Ref SampleDBPg
+      # OptionGroupName: !Ref SampleDBOg
+      MultiAZ: true
+      VPCSecurityGroups:
+        - !Ref SampleSgDB
+
+ #=================================
+ # S3
+ #=================================
+  SampleS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "sample-s3-20220201"
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      VersioningConfiguration:
+        Status: Enabled
+
+ #=================================
+ # ロードバランサー
+ #=================================
+
+  SampleElb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Name: sample-elb
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref SampleSgElb
+      Subnets:
+        - !Ref SamplePublicSubnet01
+        - !Ref SamplePublicSubnet02
+      Tags:
+        - Key: Name
+          Value: sample-elb
+
+  # ALBのターゲットグループの指定
+  BlueGreenTarget1:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: BlueGreenTarget1
+      Port: 80
+      Protocol: HTTP
+      HealthCheckPath : /test
+      VpcId: !Ref SampleVPC
+
+  BlueGreenTarget2:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: BlueGreenTarget2
+      Port: 80
+      Protocol: HTTP
+      HealthCheckPath : /test
+      VpcId: !Ref SampleVPC
+
+  # ALBのリスナーの指定
+  ALBListener1:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            !Ref BlueGreenTarget1
+      LoadBalancerArn:
+        !Ref SampleElb
+      Port: 80
+      Protocol: HTTP
+
+  ALBListener2:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            !Ref BlueGreenTarget2
+      LoadBalancerArn:
+        !Ref SampleElb
+      Port: 8080
+      Protocol: HTTP
+
+ #=================================
+ # ECR
+ #=================================
+
+   SampleRails:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: sample-rails
+
+   SampleNginx:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: sample-nginx
+
+ #=================================
+ # CodeBuild
+ #=================================
+
+ #=================================
+ # IAM
+ #=================================
+    
+ #=================================
+ # CodeDeploy
+ #=================================
+
+ #=================================
+ # CodePipeline
+ #=================================
+
+ #=================================
+ # ECS
+ #=================================
