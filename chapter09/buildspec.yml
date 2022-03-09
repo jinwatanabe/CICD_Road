@@ -21,6 +21,7 @@ phases:
       - docker build --target production --cache-from build:latest --build-arg SECRET_KEY_BASE=$SECRET_KEY_BASE --build-arg BUILDKIT_INLINE_CACHE=1 -t $IMAGE_NAME:$IMAGE_TAG .
       - docker build --target build --cache-from build:latest --build-arg SECRET_KEY_BASE=$SECRET_KEY_BASE --build-arg BUILDKIT_INLINE_CACHE=1 -t build:latest .
       - docker tag $IMAGE_NAME:$IMAGE_TAG $AWS_ECR_BUILD_REPOSITORY:$IMAGE_TAG
+      - docker tag $IMAGE_NAME:$IMAGE_TAG $AWS_ECR_BUILD_REPOSITORY:staging
       - docker tag build:latest $AWS_ECR_BUILD_REPOSITORY:latest
 
   post_build:
@@ -30,6 +31,7 @@ phases:
       - docker images
       - docker push $AWS_ECR_BUILD_REPOSITORY:latest
       - docker push $AWS_ECR_BUILD_REPOSITORY:$IMAGE_TAG
+      - docker push $AWS_ECR_BUILD_REPOSITORY:staging
       - echo "[{\"name\":\"sample-rails\",\"imageUri\":\"${AWS_ECR_BUILD_REPOSITORY}:${IMAGE_TAG}\"}]" > imagedefinitions.json
 
 artifacts:
